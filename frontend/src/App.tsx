@@ -136,8 +136,8 @@ function App() {
     if (persist) { try { localStorage.setItem('selectedSearchEngine', engine) } catch {} }
   }, [])
 
-  const handleSearch = useCallback(() => {
-    const query = searchQuery.trim()
+  const handleSearch = useCallback((overrideQuery?: string) => {
+    const query = (overrideQuery ?? searchQuery).trim()
     if (!query) return
     setSearchQuery('')
     setIsSuggestionsOpen(false)
@@ -159,29 +159,21 @@ function App() {
       setSelectedIndex(-1)
 
       // Try real suggestions in background
-      if (currentEngine === 'duckduckgo') {
-        const cbName = 'ddgCb_' + Date.now()
-        const script = document.createElement('script')
-        Reflect.set(window, cbName, (data: { phrase?: string }[]) => {
-          Reflect.deleteProperty(window, cbName)
-          script.parentNode?.removeChild(script)
-          const api = data.map(i => i.phrase ?? String(i)).slice(0, 8)
-          if (api.length) { setSuggestions(api); setIsSuggestionsOpen(true) }
-        })
-        script.src = `https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&callback=${cbName}`
-        script.onerror = () => { script.parentNode?.removeChild(script); Reflect.deleteProperty(window, cbName) }
-        document.body.appendChild(script)
-        setTimeout(() => { script.parentNode?.removeChild(script); Reflect.deleteProperty(window, cbName) }, 2000)
-      } else {
-        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`)}`)
-          .then(r => r.json())
-          .then(data => {
-            try {
-              const content = JSON.parse(data.contents)
-              if (content?.[1]?.length) { setSuggestions(content[1].slice(0, 8)); setIsSuggestionsOpen(true) }
-            } catch {}
-          })
-          .catch(() => {})
+      try {
+        const res = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=8&namespace=0&format=json&origin=*`
+        )
+        if (res.ok) {
+          const data = await res.json()
+          // OpenSearch format: [query, [suggestions], [descriptions], [urls]]
+          const api: string[] = Array.isArray(data[1]) ? data[1].slice(0, 8) : []
+          if (api.length) {
+            setSuggestions(api)
+            setIsSuggestionsOpen(true)
+          }
+        }
+      } catch (err) {
+        // Silently ignore fetch errors
       }
     }, 300)
   }
@@ -189,11 +181,8 @@ function App() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (isSuggestionsOpen && selectedIndex >= 0 && selectedIndex < suggestions.length) {
-        setSearchQuery(suggestions[selectedIndex])
-        setIsSuggestionsOpen(false)
-      }
-      handleSearch()
+      const picked = isSuggestionsOpen && selectedIndex >= 0 ? suggestions[selectedIndex] : undefined
+      handleSearch(picked)
       return
     }
     if (!isSuggestionsOpen || suggestions.length === 0) return
@@ -308,7 +297,7 @@ function App() {
             <div
               key={index}
               className={`suggestion-item${index === selectedIndex ? ' selected' : ''}`}
-              onClick={() => { setSearchQuery(suggestion); setIsSuggestionsOpen(false); setTimeout(handleSearch, 0) }}
+              onClick={() => { handleSearch(suggestion) }}
             >
               <svg className="suggestion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
