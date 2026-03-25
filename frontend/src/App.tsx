@@ -9,6 +9,7 @@ const searchEngineUrls: Record<string, string> = {
   duckduckgo: 'https://duckduckgo.com/?q=',
   yahoo: 'https://search.yahoo.com/search?p=',
   brave: 'https://search.brave.com/search?q=',
+  perplexity: 'https://www.perplexity.ai/search?q=',
 }
 
 const aetherIconSvg = `data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z'/><path d='M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z'/></svg>`
@@ -20,6 +21,7 @@ const engineIcons: Record<string, string> = {
   duckduckgo: 'https://img.icons8.com/?size=100&id=63778&format=png&color=000000',
   yahoo: 'https://img.icons8.com/?size=100&id=G3F1h1aX2vpT&format=png&color=000000',
   brave: 'https://img.icons8.com/?size=100&id=ZAPJV5FAO4PW&format=png&color=000000',
+  perplexity: 'https://www.google.com/s2/favicons?domain=perplexity.ai&sz=128',
 }
 
 const engineNames: Record<string, string> = {
@@ -29,6 +31,7 @@ const engineNames: Record<string, string> = {
   duckduckgo: 'DuckDuckGo',
   yahoo: 'Yahoo',
   brave: 'Brave',
+  perplexity: 'Perplexity',
 }
 
 // ── Services ───────────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ function App() {
   const setCurrentEngine = useCallback((engine: string, persist = true) => {
     if (!searchEngineUrls[engine]) return
     setCurrentEngineState(engine)
-    if (persist) { try { localStorage.setItem('selectedSearchEngine', engine) } catch {} }
+    if (persist) { try { localStorage.setItem('selectedSearchEngine', engine) } catch { } }
   }, [])
 
   const handleSearch = useCallback((overrideQuery?: string) => {
@@ -212,7 +215,7 @@ function App() {
       const dom = new URL(full).hostname.replace('www.', '').split('.')[0]
       const cap = dom.charAt(0).toUpperCase() + dom.slice(1)
       if (!editName || editName === services[editingIndex]?.name) setEditName(cap)
-    } catch {}
+    } catch { }
   }
 
   const handleSave = () => {
@@ -225,7 +228,7 @@ function App() {
     if (editingIndex >= 0) updated[editingIndex] = newService
     else updated.push(newService)
     setServices(updated)
-    try { localStorage.setItem('services', JSON.stringify(updated)) } catch {}
+    try { localStorage.setItem('services', JSON.stringify(updated)) } catch { }
     closeEditModal()
   }
 
@@ -245,8 +248,6 @@ function App() {
             value={searchQuery}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            onFocus={e => { (e.currentTarget.closest('.search-box') as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)' }}
-            onBlur={e => { (e.currentTarget.closest('.search-box') as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)' }}
             rows={1}
           />
 
@@ -378,6 +379,36 @@ function App() {
             <button className="btn-save" onClick={handleSave}>Save</button>
           </div>
         </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="bottom-nav">
+        <button className="bottom-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          History
+        </button>
+        <button className="bottom-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Bookmarks
+        </button>
+        <button className="bottom-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Settings
+        </button>
+        <button className="bottom-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+          </svg>
+          Assistant
+        </button>
       </div>
     </div>
   )
