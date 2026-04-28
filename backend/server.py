@@ -8,8 +8,17 @@ import sys
 import os
 import threading
 import uvicorn
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+_t0 = time.time()
+def _time_check(name):
+    global _t0
+    t1 = time.time()
+    print(f"\033[96m  [SERVER STARTUP] {name} took {t1 - _t0:.3f}s\033[0m")
+    _t0 = t1
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
@@ -19,6 +28,7 @@ from dotenv import load_dotenv
 
 import warnings
 warnings.filterwarnings("ignore", message="Core Pydantic V1 functionality")
+_time_check("FastAPI & Standard Imports")
 
 
 # ── load .env (GROQ_API_KEY etc.)
@@ -27,112 +37,123 @@ load_dotenv()
 # ── absolute path so imports resolve regardless of cwd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# ── LangChain imports
-from langchain.agents import create_agent
-from langchain.tools import tool
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-
-# ── Retriever imports
-from retrievers.text_retriever import retrieve_context
-from retrievers.image_retriever import search_images
-from retrievers.video_retriever import search_videos
-
-
-# ── Tool definitions
-@tool(
-    "web_search",
-    description=(
-        "Search the web for information on a given query. "
-        "Returns relevant text context and source URLs. "
-        "Use this to find factual information to answer user questions."
-    ),
-)
-def web_search(query: str) -> str:
-    retrieval = retrieve_context(query)
-    sources = retrieval["sources"]
-    context = retrieval["context"]
-    source_list = "\n".join(
-        f"- {s['title']}: {s['url']}" for s in sources
-    )
-    return f"Context:\n{context}\n\nSources:\n{source_list}"
-
-
-@tool(
-    "image_search",
-    description=(
-        "Search the web for images related to a given query. "
-        "Returns a list of image titles and URLs. "
-        "Use this when the user asks for images or visual content."
-    ),
-)
-def image_search(query: str) -> str:
-    images = search_images(query)
-    if not images:
-        return "No images found."
-    results = "\n".join(
-        f"- {img['title']}: {img['image']}" for img in images
-    )
-    return f"Images found:\n{results}"
-
-
-@tool(
-    "video_search",
-    description=(
-        "Search the web for videos related to a given query. "
-        "Returns a list of video titles, URLs, and descriptions. "
-        "Use this when the user asks for videos or video content."
-    ),
-)
-def video_search(query: str) -> str:
-    videos = search_videos(query)
-    if not videos:
-        return "No videos found."
-    results = "\n".join(
-        f"- {v['title']} ({v['duration']}): {v['url']}" for v in videos
-    )
-    return f"Videos found:\n{results}"
-
-
-# ── System prompt & memory
-SYSTEM_PROMPT = (
-    "You are a helpful search assistant. "
-    "You can search the web for text, images, and videos to answer user queries. "
-    "Always use the web_search tool to find relevant information before answering. "
-    "Use image_search and video_search when the user requests visual or video content. "
-    "Provide concise, well-structured answers based on the retrieved context."
-)
-
-
-class ConversationMemory:
-    def __init__(self, system_prompt: str = SYSTEM_PROMPT):
-        self.history = [SystemMessage(content=system_prompt)]
-
-    def add(self, role: str, content: str):
-        if role == "user":
-            self.history.append(HumanMessage(content=content))
-        else:
-            self.history.append(AIMessage(content=content))
-
-    def get(self):
-        return self.history
-
-    def clear(self):
-        self.history = [self.history[0]]
-
-
-memory = ConversationMemory()
-
 # ── Stop flag
 _stop_event = threading.Event()
 
-# ── Agent
-agent = create_agent("groq:openai/gpt-oss-120b", tools=[web_search, image_search, video_search])
+# ── LangChain internals (lazy loaded in background)
+agent = None
+memory = None
+
+def init_langchain():
+    global agent, memory
+    if agent is not None:
+        return
+
+    import time
+    t0_lc = time.time()
+    
+    from langchain.agents import create_agent
+    from langchain.tools import tool
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+    
+    from retrievers.text_retriever import retrieve_context
+    from retrievers.image_retriever import search_images
+    from retrievers.video_retriever import search_videos
+
+    @tool(
+        "web_search",
+        description=(
+            "Search the web for information on a given query. "
+            "Returns relevant text context and source URLs. "
+            "Use this to find factual information to answer user questions."
+        ),
+    )
+    def web_search(query: str) -> str:
+        retrieval = retrieve_context(query)
+        sources = retrieval["sources"]
+        context = retrieval["context"]
+        source_list = "\n".join(
+            f"- {s['title']}: {s['url']}" for s in sources
+        )
+        return f"Context:\n{context}\n\nSources:\n{source_list}"
+
+    @tool(
+        "image_search",
+        description=(
+            "Search the web for images related to a given query. "
+            "Returns a list of image titles and URLs. "
+            "Use this when the user asks for images or visual content."
+        ),
+    )
+    def image_search(query: str) -> str:
+        images = search_images(query)
+        if not images:
+            return "No images found."
+        results = "\n".join(
+            f"- {img['title']}: {img['image']}" for img in images
+        )
+        return f"Images found:\n{results}"
+
+    @tool(
+        "video_search",
+        description=(
+            "Search the web for videos related to a given query. "
+            "Returns a list of video titles, URLs, and descriptions. "
+            "Use this when the user asks for videos or video content."
+        ),
+    )
+    def video_search(query: str) -> str:
+        videos = search_videos(query)
+        if not videos:
+            return "No videos found."
+        results = "\n".join(
+            f"- {v['title']} ({v['duration']}): {v['url']}" for v in videos
+        )
+        return f"Videos found:\n{results}"
+
+    # ── System prompt & memory
+    SYSTEM_PROMPT = (
+        "You are a helpful search assistant. "
+        "You can search the web for text, images, and videos to answer user queries. "
+        "Always use the web_search tool to find relevant information before answering. "
+        "Use image_search and video_search when the user requests visual or video content. "
+        "Provide concise, well-structured answers based on the retrieved context."
+    )
+
+    class ConversationMemory:
+        def __init__(self, system_prompt: str = SYSTEM_PROMPT):
+            self.history = [SystemMessage(content=system_prompt)]
+
+        def add(self, role: str, content: str):
+            if role == "user":
+                self.history.append(HumanMessage(content=content))
+            else:
+                self.history.append(AIMessage(content=content))
+
+        def get(self):
+            return self.history
+
+        def clear(self):
+            self.history = [self.history[0]]
+
+    memory = ConversationMemory()
+
+    # ── Agent
+    agent = create_agent("groq:openai/gpt-oss-120b", tools=[web_search, image_search, video_search])
+
+    t1_lc = time.time()
+    print(f"\n\033[96m⏱️  [BACKGROUND INIT] LangChain & Agent ready in {t1_lc - t0_lc:.3f}s\033[0m")
 
 
 # ── FastAPI app
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+_time_check("FastAPI App Setup")
+
+@app.on_event("startup")
+async def startup_event():
+    # Start Langchain initialization in a background thread
+    threading.Thread(target=init_langchain, daemon=True).start()
 
 
 class ChatRequest(BaseModel):
@@ -179,6 +200,10 @@ def event(payload: dict) -> str:
 
 def stream_chat(user_input: str):
     """Generator: yields SSE events while the agent is running."""
+    # Wait for background init to finish if it hasn't
+    while agent is None or memory is None:
+        time.sleep(0.1)
+
     _stop_event.clear()
     memory.add("user", user_input)
 
@@ -222,6 +247,12 @@ def stream_chat(user_input: str):
 @app.post("/ask", response_model=QueryResponse)
 def ask_endpoint(request: QueryRequest):
     """Accept a question, retrieve context, images, videos, and return everything."""
+    from langchain.chat_models import init_chat_model
+    from langchain_core.messages import HumanMessage, SystemMessage
+    from retrievers.text_retriever import retrieve_context
+    from retrievers.image_retriever import search_images
+    from retrievers.video_retriever import search_videos
+
     q = request.query
 
     with ThreadPoolExecutor(max_workers=3) as executor:
