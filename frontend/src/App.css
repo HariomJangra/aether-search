@@ -286,7 +286,7 @@ body {
     justify-content: space-between;
     gap: 12px;
     padding: 14px;
-    min-height: 110px;
+    height: 150px;
     border-radius: 14px;
     border: 1px solid #e2deda;
     background: #ffffff;
@@ -297,6 +297,17 @@ body {
 
 .widget-link {
     cursor: pointer;
+}
+
+.widget-cover-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+    z-index: 2;
 }
 
 .widget-top {
@@ -380,18 +391,54 @@ body {
     background: radial-gradient(circle, rgba(83, 110, 156, 0.25) 0%, rgba(83, 110, 156, 0) 70%);
 }
 
-.widget-card[data-variant='market'] .widget-tag {
-    background: #e6f4ed;
-    border-color: #c9e6d7;
-    color: #2b6f47;
+.widget-card[data-variant='market'] {
+    padding: 0;
+    overflow: hidden;
+}
+
+.market-widget-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: inherit;
+}
+
+.market-widget-inner .edit-btn {
+    top: 10px;
+    left: 10px;
+    right: auto;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.widget-card[data-variant='market']:hover .edit-btn,
+.widget-card[data-variant='market']:focus-within .edit-btn {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+    transition-delay: 1s;
+}
+
+.tradingview-widget-copyright {
+    display: none !important;
 }
 
 .widget-card[data-variant='note'] {
-    background: #fff2c7;
-    border-color: #f0d9a7;
-    box-shadow: 0 10px 24px rgba(181, 140, 44, 0.12);
-    padding: 16px;
-    min-height: 150px;
+    background-color: #fffefb;
+    position: relative;
+    padding: 0;
+    overflow: hidden;
+}
+
+.widget-card[data-variant='note']::before {
+    content: '';
+    position: absolute;
+    left: 24px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: rgba(220, 100, 100, 0.25);
+    z-index: 1;
+    pointer-events: none;
 }
 
 .note-widget {
@@ -403,18 +450,20 @@ body {
 .note-input {
     width: 100%;
     height: 100%;
-    min-height: 110px;
     border: none;
     background: transparent;
     resize: none;
     overflow: auto;
-    font-size: 16px;
-    line-height: 1.4;
-    font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-    color: #b06b00;
+    font-size: 14px;
+    line-height: 26px;
+    padding: 8px 16px 16px 36px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #2c2c2c;
     outline: none;
     user-select: text;
     scrollbar-width: none;
+    background-image: repeating-linear-gradient(transparent, transparent 25px, rgba(0, 0, 0, 0.04) 25px, rgba(0, 0, 0, 0.04) 26px);
+    background-attachment: local;
 }
 
 .note-input::-webkit-scrollbar {
@@ -423,56 +472,75 @@ body {
 }
 
 .note-input::placeholder {
-    color: #d08a2c;
+    color: #a3a3a3;
+    font-style: italic;
 }
 
 .widget-card[data-variant='clock'] {
-    background: linear-gradient(135deg, #f7f4ef 0%, #eef3f3 55%, #fdf6ee 100%);
-    border-color: rgba(72, 84, 88, 0.18);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
 }
 
-.widget-card[data-variant='clock']::before {
-    content: '';
+.custom-clock-widget {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 14px 16px;
+    box-sizing: border-box;
+    background: #fafaf9;
+    position: relative;
+}
+
+.clock-top {
     position: absolute;
-    top: -40px;
-    right: -30px;
-    width: 140px;
-    height: 140px;
-    background: radial-gradient(circle, rgba(84, 120, 130, 0.3) 0%, rgba(84, 120, 130, 0) 70%);
+    top: 14px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
-.widget-card[data-variant='clock']::after {
-    content: '';
-    position: absolute;
-    bottom: -50px;
-    left: -40px;
-    width: 160px;
-    height: 160px;
-    background: radial-gradient(circle, rgba(255, 228, 194, 0.45) 0%, rgba(255, 228, 194, 0) 68%);
+.clock-date-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: #737373;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.widget-card[data-variant='clock'] .widget-title {
-    color: #2e3538;
+.clock-icon {
+    color: #a3a3a3;
 }
 
-.widget-card[data-variant='clock'] .widget-subtitle {
-    color: #556066;
-    letter-spacing: 0.02em;
+.clock-icon svg {
+    width: 16px;
+    height: 16px;
 }
 
-.widget-card[data-variant='clock'] .widget-stat {
-    font-size: 26px;
-    letter-spacing: 0.08em;
-    font-variant-numeric: tabular-nums;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    color: #1c2528;
+.clock-time-huge {
+    font-size: 42px;
+    font-weight: 300;
+    color: #1a1a1a;
+    letter-spacing: -1.5px;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.widget-card[data-variant='clock'] .widget-tag {
-    background: #f2f1ed;
-    border-color: #e2deda;
-    color: #5a5a54;
+.clock-ampm {
+    font-size: 14px;
+    font-weight: 600;
+    color: #808080;
+    letter-spacing: 0px;
 }
 
 @media (max-width: 900px) {
@@ -764,6 +832,95 @@ body {
     line-height: 1;
     pointer-events: none;
     user-select: none;
+}
+
+/* Custom Market Widget */
+.custom-market-widget {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 16px;
+    box-sizing: border-box;
+    background: #fafaf9; /* matching the image's very light warm white */
+}
+
+.market-header {
+    position: relative;
+    display: block;
+}
+
+.market-title {
+    display: flex;
+    flex-direction: column;
+}
+
+.market-symbol {
+    font-size: 17px;
+    font-weight: 500;
+    color: #1a1a1a;
+    line-height: 1.2;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 64px;
+}
+
+.market-name {
+    font-size: 13px;
+    color: #737373;
+    margin-top: 3px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.market-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 3px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.market-badge svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 3px;
+}
+
+.market-chart {
+    flex: 1;
+    margin: 8px 0;
+    position: relative;
+    border-top: 1px dashed #d4d4d4;
+    min-height: 20px;
+}
+
+.market-svg {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+}
+
+.market-footer {
+    font-size: 24px;
+    font-weight: 400;
+    color: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: -0.3px;
 }
 
 /* Responsive Design */
