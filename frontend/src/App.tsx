@@ -12,10 +12,10 @@ const searchEngineUrls: Record<string, string> = {
   perplexity: 'https://www.perplexity.ai/search?q=',
 }
 
-const aetherIconSvg = `data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z'/><path d='M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z'/></svg>`
+const aetherLogo = '/aether-logo.png'
 
 const engineIcons: Record<string, string> = {
-  aether: aetherIconSvg,
+  aether: aetherLogo,
   google: 'https://img.icons8.com/?size=100&id=17949&format=png&color=000000',
   bing: 'https://img.icons8.com/?size=100&id=pOADWgX6vV63&format=png&color=000000',
   duckduckgo: 'https://img.icons8.com/?size=100&id=63778&format=png&color=000000',
@@ -46,6 +46,39 @@ const defaultServices: Service[] = [
   { url: 'https://chat.openai.com', name: 'ChatGPT', icon: null },
   { url: 'https://gemini.google.com', name: 'Gemini', icon: null },
   { url: 'https://github.com', name: 'Github', icon: null },
+]
+
+const quickWidgets = [
+  {
+    id: 'clock',
+    title: 'Local time',
+    subtitle: 'Right now',
+    stat: '11:50 PM',
+    tag: 'Local',
+    variant: 'clock',
+  },
+  {
+    id: 'market',
+    title: 'NVDA',
+    subtitle: 'NVIDIA Corporation',
+    stat: '$216.10',
+    tag: '+3.76%',
+    variant: 'market',
+  },
+  {
+    id: 'notes',
+    title: 'Quick notes',
+    subtitle: 'Jot anything down',
+    variant: 'note',
+  },
+  {
+    id: 'assistant',
+    title: 'Try assistant',
+    subtitle: 'Guided search flow',
+    action: 'Open',
+    href: './aether.html?q=Try%20assistant',
+    variant: 'aurora',
+  },
 ]
 
 function getFaviconUrl(url: string): string {
@@ -90,6 +123,8 @@ function getFallbackSuggestions(query: string): string[] {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 function App() {
+  const timeText = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  const dateText = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const [searchQuery, setSearchQuery] = useState('')
   const [currentEngine, setCurrentEngineState] = useState<string>(() => {
     try { return localStorage.getItem('selectedSearchEngine') || 'aether' } catch { return 'aether' }
@@ -103,6 +138,9 @@ function App() {
       const saved = localStorage.getItem('services')
       return saved ? JSON.parse(saved) : defaultServices.map(s => ({ ...s }))
     } catch { return defaultServices.map(s => ({ ...s })) }
+  })
+  const [quickNotes, setQuickNotes] = useState(() => {
+    try { return localStorage.getItem('quickNotes') || '' } catch { return '' }
   })
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState(-1)
@@ -216,6 +254,11 @@ function App() {
       const cap = dom.charAt(0).toUpperCase() + dom.slice(1)
       if (!editName || editName === services[editingIndex]?.name) setEditName(cap)
     } catch { }
+  }
+
+  const handleNotesChange = (value: string) => {
+    setQuickNotes(value)
+    try { localStorage.setItem('quickNotes', value) } catch { }
   }
 
   const handleSave = () => {
@@ -340,6 +383,60 @@ function App() {
         ))}
       </div>
 
+      {/* Quick Widgets */}
+      <section className="widgets-grid" aria-label="Quick widgets">
+        {quickWidgets.map(widget => {
+          const isLink = Boolean(widget.href)
+          const isNotes = widget.id === 'notes'
+          const Tag = isLink ? 'a' : 'div'
+          const linkProps = isLink
+            ? {
+                href: widget.href,
+                target: widget.href?.startsWith('http') ? '_blank' : undefined,
+                rel: widget.href?.startsWith('http') ? 'noreferrer' : undefined,
+              }
+            : {}
+
+          const stat = widget.id === 'clock' ? timeText : widget.stat
+          const subtitle = widget.id === 'clock' ? dateText : widget.subtitle
+
+          return (
+            <Tag
+              key={widget.id}
+              className={`widget-card${isLink ? ' widget-link' : ''}`}
+              data-variant={widget.variant}
+              {...linkProps}
+            >
+              {isNotes ? (
+                <div className="note-widget">
+                  <textarea
+                    className="note-input"
+                    placeholder="New note..."
+                    value={quickNotes}
+                    onChange={e => handleNotesChange(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="widget-top">
+                    <div>
+                      <p className="widget-title">{widget.title}</p>
+                      <p className="widget-subtitle">{subtitle}</p>
+                    </div>
+                    {widget.tag && <span className="widget-tag">{widget.tag}</span>}
+                  </div>
+                  <div className="widget-bottom">
+                    {stat && <span className="widget-stat">{stat}</span>}
+                    {widget.action && <span className="widget-action">{widget.action}</span>}
+                  </div>
+                </>
+              )}
+            </Tag>
+          )
+        })}
+      </section>
+
       {/* Edit Modal */}
       <div
         className={`edit-modal${editModalOpen ? ' active' : ''}`}
@@ -383,32 +480,11 @@ function App() {
 
       {/* Bottom Navigation */}
       <div className="bottom-nav">
-        <button className="bottom-nav-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          History
-        </button>
-        <button className="bottom-nav-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-          </svg>
-          Bookmarks
-        </button>
-        <button className="bottom-nav-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          Settings
-        </button>
-        <button className="bottom-nav-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-          </svg>
-          Assistant
-        </button>
+        <button className="bottom-nav-btn">History</button>
+        <span className="bottom-nav-divider">|</span>
+        <button className="bottom-nav-btn">Bookmarks</button>
+        <span className="bottom-nav-divider">|</span>
+        <button className="bottom-nav-btn">Settings</button>
       </div>
     </div>
   )
